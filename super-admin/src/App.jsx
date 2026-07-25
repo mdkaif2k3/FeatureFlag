@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getOrganizations, createOrganization, updateOrganization, deleteOrganization } from "./services/organizationService";
+import { getFeatureFlags } from "./services/featureflagService";
 
 function App() {
 
@@ -10,9 +11,12 @@ function App() {
     const [selectedOrganization, setSelectedOrganization] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [organizationToDelete, setOrganizationToDelete] = useState(null);
+    const [featureFlags, setFeatureFlags] = useState([]);
+    const [expandedOrganization, setExpandedOrganization] = useState(null);
 
     useEffect(() => {
         fetchOrganizations();
+        fetchFeatureFlags();
     }, []);
 
     const fetchOrganizations = async () => {
@@ -66,6 +70,15 @@ function App() {
         }
     };
 
+    const fetchFeatureFlags = async () => {
+        try {
+            const data = await getFeatureFlags();
+            setFeatureFlags(data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-100">
             <header className="bg-white shadow-sm border-b">
@@ -100,7 +113,7 @@ function App() {
                 organizations.map((organization) => (
                     <div key={organization.id} className="border-b">
 
-                        <div className="grid grid-cols-3 items-center px-6 py-4 hover:bg-slate-50 cursor-pointer">
+                        <div onClick={() => setExpandedOrganization(expandedOrganization === organization.id ? null : organization.id)} className="grid grid-cols-3 items-center px-6 py-4 hover:bg-slate-50 cursor-pointer">
 
                             <div className="flex items-center gap-3">
                                 <span className="text-lg">▶</span>
@@ -124,6 +137,20 @@ function App() {
                                 </button>
                             </div>
                         </div>
+                        {expandedOrganization === organization.id && (
+                            <div className="bg-slate-50 px-10 py-4">
+                                {featureFlags.map((featureFlag) =>
+                                    featureFlag.organizationFeatures.filter((organizationFeature) => organizationFeature.organization.id === organization.id).map((organizationFeature) => (
+                                        <div key={organizationFeature.id} className="flex justify-between py-2 border-b last:border-b-0">
+                                            <span>{featureFlag.name}</span>
+                                            <span>
+                                                {organizationFeature.enabled ? "Enabled" : "Disabled"}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
                 )))}
             </main>
