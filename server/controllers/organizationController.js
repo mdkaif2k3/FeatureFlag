@@ -24,6 +24,18 @@ export const createOrganization = async (req, res) => {
             }
         });
 
+        const featureFlags = await prisma.featureFlag.findMany();
+
+        const result = await prisma.organizationFeature.createMany({
+            data: featureFlags.map((featureFlag) => ({
+                organizationId: organization.id,
+                featureId: featureFlag.id,
+                enabled: false,
+            })),
+        });
+
+        console.log(result);
+
         res.status(201).json({
             message: "Organization created successfully",
             organization

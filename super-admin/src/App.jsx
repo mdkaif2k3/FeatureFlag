@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getOrganizations, createOrganization, updateOrganization, deleteOrganization } from "./services/organizationService";
-import { getFeatureFlags } from "./services/featureflagService";
+import { getFeatureFlags, createFeatureFlag, updateFeatureFlag, deleteFeatureFlag, updateOrganizationFeature } from "./services/featureflagService";
 
 function App() {
 
@@ -11,8 +11,15 @@ function App() {
     const [selectedOrganization, setSelectedOrganization] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [organizationToDelete, setOrganizationToDelete] = useState(null);
+    const [isCreateFeatureFlagModalOpen, setIsCreateFeatureFlagModalOpen] = useState(false);
+    const [featureFlagName, setFeatureFlagName] = useState("");
     const [featureFlags, setFeatureFlags] = useState([]);
     const [expandedOrganization, setExpandedOrganization] = useState(null);
+    const [isEditFeatureFlagModalOpen, setIsEditFeatureFlagModalOpen] = useState(false);
+    const [selectedFeatureFlag, setSelectedFeatureFlag] = useState(null);
+    const [editFeatureFlagName, setEditFeatureFlagName] = useState("");
+    const [isDeleteFeatureFlagModalOpen, setIsDeleteFeatureFlagModalOpen] = useState(false);
+    const [featureFlagToDelete, setFeatureFlagToDelete] = useState(null);
 
     useEffect(() => {
         fetchOrganizations();
@@ -34,7 +41,8 @@ function App() {
                 name: organizationName
             });
 
-            fetchOrganizations();
+            await fetchOrganizations();
+            await fetchFeatureFlags();
             setOrganizationName("");
             setIsCreateModalOpen(false);
         } catch (error) {
@@ -79,6 +87,59 @@ function App() {
         }
     };
 
+    const handleCreateFeatureFlag = async () => {
+        try {
+            await createFeatureFlag({
+                name: featureFlagName,
+            });
+            await fetchFeatureFlags();
+            setFeatureFlagName("");
+            setIsCreateFeatureFlagModalOpen(false);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleUpdateFeatureFlag = async () => {
+        try {
+            await updateFeatureFlag(selectedFeatureFlag.id, {
+                name: editFeatureFlagName,
+            });
+
+            await fetchFeatureFlags();
+
+            setSelectedFeatureFlag(null);
+            setEditFeatureFlagName("");
+            setIsEditFeatureFlagModalOpen(false);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleDeleteFeatureFlag = async () => {
+        try {
+            await deleteFeatureFlag(featureFlagToDelete.id);
+            await fetchFeatureFlags();
+            setFeatureFlagToDelete(null);
+            setIsDeleteFeatureFlagModalOpen(false);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleToggleFeature = async (organizationFeature) => {
+        try {
+            await updateOrganizationFeature(
+                organizationFeature.id,
+                !organizationFeature.enabled
+            );
+
+            await fetchFeatureFlags();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-100">
             <header className="bg-white shadow-sm border-b">
@@ -91,68 +152,109 @@ function App() {
                             Super Admin
                         </p>
                     </div>
-
-                    <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition">
-                        + Organization
-                    </button>
+                    <div>
+                        <button onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white mx-2 px-5 py-2 rounded-lg font-medium transition">
+                            + Organization
+                        </button>
+                        <button onClick={() => setIsCreateFeatureFlagModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-medium transition">
+                            + Feature Flag
+                        </button>
+                    </div>
                 </div>
             </header>
 
             <main className="max-w-7xl mx-auto p-6">
-                {organizations.length === 0 ? (
-                    <div className="text-center py-16 border rounded-xl bg-white">
-                        <h2 className="text-2xl font-semibold text-gray-700">
-                            No organizations available
-                        </h2>
-
-                        <p className="mt-2 text-gray-500">
-                            Create your first organization to get started.
-                        </p>
+                <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="px-6 py-4 border-b">
+                            <h2 className="text-xl font-semibold">
+                                Organizations
+                            </h2>
                     </div>
-                ) : (
-                organizations.map((organization) => (
-                    <div key={organization.id} className="border-b">
+                    {organizations.length === 0 ? (
+                        <div className="text-center py-16 border rounded-xl bg-white">
+                            <h2 className="text-2xl font-semibold text-gray-700">
+                                No organizations available
+                            </h2>
 
-                        <div onClick={() => setExpandedOrganization(expandedOrganization === organization.id ? null : organization.id)} className="grid grid-cols-3 items-center px-6 py-4 hover:bg-slate-50 cursor-pointer">
-
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg">▶</span>
-
-                                <span className="font-medium">
-                                    {organization.name}
-                                </span>
-                            </div>
-
-                            <div className="text-slate-500">
-                                {new Date(organization.createdAt).toLocaleDateString()}
-                            </div>
-
-                            <div className="flex justify-end gap-3">
-                                <button onClick={() => {setSelectedOrganization(organization); setOrganizationName(organization.name); setIsEditModalOpen(true);}} className="text-blue-600 hover:text-blue-800">
-                                    Edit
-                                </button>
-
-                                <button onClick={() => {setOrganizationToDelete(organization); setIsDeleteModalOpen(true);}} className="text-red-600 hover:text-red-800">
-                                    Delete
-                                </button>
-                            </div>
+                            <p className="mt-2 text-gray-500">
+                                Create your first organization to get started.
+                            </p>
                         </div>
-                        {expandedOrganization === organization.id && (
-                            <div className="bg-slate-50 px-10 py-4">
-                                {featureFlags.map((featureFlag) =>
-                                    featureFlag.organizationFeatures.filter((organizationFeature) => organizationFeature.organization.id === organization.id).map((organizationFeature) => (
-                                        <div key={organizationFeature.id} className="flex justify-between py-2 border-b last:border-b-0">
-                                            <span>{featureFlag.name}</span>
-                                            <span>
-                                                {organizationFeature.enabled ? "Enabled" : "Disabled"}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
+                    ) : (
+                    organizations.map((organization) => (
+                        <div key={organization.id} className="border-b">
+                            <div onClick={() => setExpandedOrganization(expandedOrganization === organization.id ? null : organization.id)} className="grid grid-cols-3 items-center px-6 py-4 hover:bg-slate-50 cursor-pointer">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-lg">▶</span>
+
+                                    <span className="font-medium">
+                                        {organization.name}
+                                    </span>
+                                </div>
+
+                                <div className="text-slate-500">
+                                    {new Date(organization.createdAt).toLocaleDateString()}
+                                </div>
+
+                                <div className="flex justify-end gap-3">
+                                    <button onClick={() => {setSelectedOrganization(organization); setOrganizationName(organization.name); setIsEditModalOpen(true);}} className="text-blue-600 hover:text-blue-800">
+                                        Edit
+                                    </button>
+
+                                    <button onClick={() => {setOrganizationToDelete(organization); setIsDeleteModalOpen(true);}} className="text-red-600 hover:text-red-800">
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
-                        )}
+                            {expandedOrganization === organization.id && (
+                                <div className="bg-slate-50 px-10 py-4">
+                                    {featureFlags.map((featureFlag) =>
+                                        featureFlag.organizationFeatures.filter((organizationFeature) => organizationFeature.organization.id === organization.id).map((organizationFeature) => (
+                                            <div key={organizationFeature.id} className="flex justify-between py-2 border-b last:border-b-0">
+                                                <span>{featureFlag.name}</span>
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" checked={organizationFeature.enabled} onChange={() => handleToggleFeature(organizationFeature)} className="sr-only peer" />
+                                                    <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-600 transition-colors duration-300"></div>
+                                                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-5"></div>
+                                                </label>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )))}
+                </div>
+
+                <div className="mt-10 bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="px-6 py-4 border-b">
+                        <h2 className="text-xl font-semibold">
+                            Feature Flags
+                        </h2>
                     </div>
-                )))}
+                    <table className="w-full">
+                        <tbody>
+                            {featureFlags.map((featureFlag) => (
+                                <tr key={featureFlag.id} className="border-t">
+                                    <td className="px-6 py-4">
+                                        {featureFlag.name}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {new Date(featureFlag.createdAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button onClick={() => {setSelectedFeatureFlag(featureFlag); setEditFeatureFlagName(featureFlag.name); setIsEditFeatureFlagModalOpen(true);}} className="text-blue-600 mr-4">
+                                            Edit
+                                        </button>
+                                        <button onClick={() => {setFeatureFlagToDelete(featureFlag); setIsDeleteFeatureFlagModalOpen(true);}} className="text-red-600">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </main>
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
@@ -222,6 +324,76 @@ function App() {
                                 Cancel
                             </button>
                             <button onClick={handleDeleteOrganization} className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isCreateFeatureFlagModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-2xl font-bold mb-6">
+                            Create Feature Flag
+                        </h2>
+                        <div className="space-y-2">
+                            <label className="font-medium">
+                                Feature Flag Name
+                            </label>
+                            <input type="text" value={featureFlagName} onChange={(e) => setFeatureFlagName(e.target.value)} placeholder="Enter feature flag name" className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8">
+                            <button onClick={() => {setIsCreateFeatureFlagModalOpen(false); setFeatureFlagName(""); }} className="px-5 py-2 rounded-lg border">
+                                Cancel
+                            </button>
+                            <button onClick={handleCreateFeatureFlag} className="px-5 py-2 rounded-lg bg-green-600 text-white">
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isEditFeatureFlagModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-2xl font-bold mb-6">
+                            Edit Feature Flag
+                        </h2>
+                        <div className="space-y-2">
+                            <label className="font-medium">
+                                Feature Flag Name
+                            </label>
+                            <input type="text" value={editFeatureFlagName} onChange={(e) => setEditFeatureFlagName(e.target.value)} className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8">
+                            <button onClick={() => {setSelectedFeatureFlag(null); setEditFeatureFlagName(""); setIsEditFeatureFlagModalOpen(false);}} className="px-5 py-2 rounded-lg border hover:bg-gray-100">
+                                Cancel
+                            </button>
+                            <button onClick={handleUpdateFeatureFlag} className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isDeleteFeatureFlagModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-2xl font-bold text-red-600 mb-4">
+                            Delete Feature Flag
+                        </h2>
+                        <p className="text-gray-600 mb-8">
+                            Are you sure you want to delete{" "}
+                            <span className="font-semibold">
+                                "{featureFlagToDelete?.name}"
+                            </span>
+                            ? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => {setFeatureFlagToDelete(null); setIsDeleteFeatureFlagModalOpen(false);}} className="px-5 py-2 rounded-lg border hover:bg-gray-100">
+                                Cancel
+                            </button>
+                            <button onClick={handleDeleteFeatureFlag} className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
                                 Delete
                             </button>
                         </div>

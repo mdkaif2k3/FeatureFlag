@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import organizationRoutes from "./routes/organizationRoutes.js"
 import featureflagRoutes from "./routes/featureflagRoutes.js"
+import organizationfeatureRoutes from "./routes/organizationfeatureRoutes.js"
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 app.use("/organizations", organizationRoutes);
 app.use("/feature-flags", featureflagRoutes);
+app.use("/organization-features", organizationfeatureRoutes);
 
 app.get("/", (req, res) => {
     res.send("Backend is running");

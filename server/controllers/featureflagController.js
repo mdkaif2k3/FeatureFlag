@@ -78,17 +78,19 @@ export const getFeatureFlagById = async (req, res) => {
 export const updateFeatureFlag = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, enabled } = req.body;
+        const { name } = req.body;
         const featureFlag = await prisma.featureFlag.update({
             where: {
                 id: Number(id)
             },
             data: {
-                name,
-                enabled
+                name
             }
         });
-        res.json(featureFlag);
+        res.status(200).json({
+            message: "Feature flag updated successfully",
+            featureFlag,
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -97,12 +99,17 @@ export const updateFeatureFlag = async (req, res) => {
 export const deleteFeatureFlag = async (req, res) => {
     try {
         const { id } = req.params;
+        await prisma.organizationFeature.deleteMany({
+            where: {
+                featureId: Number(id),
+            },
+        });
         await prisma.featureFlag.delete({
             where: {
-                id: Number(id)
-            }
+                id: Number(id),
+            },
         });
-        res.json({
+        res.status(200).json({
             message: "Feature flag deleted successfully",
         });
     } catch (error) {
